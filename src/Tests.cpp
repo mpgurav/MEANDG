@@ -513,49 +513,60 @@ namespace Test{
 		application.readData(startTime); //reference solution is stored same as IC
 		application.writeVariableRefArray(startTime);
 
+                if(application.getMyRank() == 0)
+                {
+		        cout << "\n\nPrinting Boundary conditions\n";
+		        cout << "No. \t Name \t         Starting face \t        No. of Faces \n";
+		        cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+		        for (int i=0; i<application.noOfBoundaryConditions; i++){
+			        cout << application.bcond[i].getId() << "\t" << application.bcond[i].getName() << " \t Starting Face: " <<  application.bcond[i].getStartFace() << "\tNumber of faces: " << application.bcond[i].getNoOfFaces() << endl;
+		        };
+		
+		        cout << "\n\nPrinting MPI boundary conditions\n";
+		        cout << "No.  myProcNo  neighbProcNo \t Starting face\t\tNo. of Faces\n";
+		        cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+		        for (int i=0; i<application.noOfBoundaryConditionsMPI; i++){
+			        cout << application.bcondMPI[i].getId() << "\t " << application.bcondMPI[i].getMyProcNo()  << "\t   " << application.bcondMPI[i].getNeighbProcNo() << "\t\tStarting Face: " <<  application.bcondMPI[i].getStartFace() << "\tNo. of Faces: " << application.bcondMPI[i].getNoOfFaces() << endl;
+		        };
 
-		cout << "\n\nPrinting Boundary conditions\n";
-		cout << "No. \t Name \t         Starting face \t        No. of Faces \n";
-		cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-		for (int i=0; i<application.noOfBoundaryConditions; i++){
-			cout << application.bcond[i].getId() << "\t" << application.bcond[i].getName() << " \t Starting Face: " <<  application.bcond[i].getStartFace() << "\tNumber of faces: " << application.bcond[i].getNoOfFaces() << endl;
-		};
+		        cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+		        cout << "Boundary type for all the variables:  \n";
+		        cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+		        for (int i=0; i<application.noOfBoundaryConditions; i++){
+			        // At a particular boundary condition
+			        cout << application.bcond[i].getName() << endl;
+			        cout << " [ ";
+			        for (Index v=0; v<application.getTotNoOfVariables(); v++){
+				        cout << application.bcond[i].getVariableTypeArray()->getValue(v) << "  ";
+			        };
+			        cout << " ]\n" << endl;
+		        };
+		        cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+		        cout << "Boundary values for all the variables:  \n";
+		        cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+		        for (int i=0; i<application.noOfBoundaryConditions; i++){
+			        cout << application.bcond[i].getName() << endl;
+			        cout << " [ ";
+			        for (Index v=0; v<application.getTotNoOfVariables(); v++){
+				        cout << application.bcond[i].getVariableValueArray()->getValue(v) << "  ";
+			        };
+			        cout << " ]\n" << endl;
+		        };
+		        cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+		        cout << "Boundary functions for all the variables:  \n";
+		        cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+		        for (int i=0; i<application.noOfBoundaryConditions; i++){
+			        cout << application.bcond[i].getName() << endl;
+			        cout << " [ ";
+			        for (Index v=0; v<application.getTotNoOfVariables(); v++){
+				        cout << application.bcond[i].getFunc2bcondTypeArray()->getValue(v) << "  ";
+			        };
+			        cout << " ]\n" << endl;
 
-		cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-		cout << "Boundary type for all the variables:  \n";
-		cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-		for (int i=0; i<application.noOfBoundaryConditions; i++){
-			// At a particular boundary condition
-			cout << application.bcond[i].getName() << endl;
-			cout << " [ ";
-			for (Index v=0; v<application.getTotNoOfVariables(); v++){
-				cout << application.bcond[i].getVariableTypeArray()->getValue(v) << "  ";
-			};
-			cout << " ]\n" << endl;
-		};
-		cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-		cout << "Boundary values for all the variables:  \n";
-		cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-		for (int i=0; i<application.noOfBoundaryConditions; i++){
-			cout << application.bcond[i].getName() << endl;
-			cout << " [ ";
-			for (Index v=0; v<application.getTotNoOfVariables(); v++){
-				cout << application.bcond[i].getVariableValueArray()->getValue(v) << "  ";
-			};
-			cout << " ]\n" << endl;
-		};
-		cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-		cout << "Boundary functions for all the variables:  \n";
-		cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-		for (int i=0; i<application.noOfBoundaryConditions; i++){
-			cout << application.bcond[i].getName() << endl;
-			cout << " [ ";
-			for (Index v=0; v<application.getTotNoOfVariables(); v++){
-				cout << application.bcond[i].getFunc2bcondTypeArray()->getValue(v) << "  ";
-			};
-			cout << " ]\n" << endl;
-
-		};
+		        };
+		}
+		//Wait till we print the above information
+		MPI_Barrier(MPI_COMM_WORLD);
 		
 		// Running Simulation
 		application.runApplication();

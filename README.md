@@ -47,3 +47,6 @@ Resources:
 2. Book: Nodal discontinuous Galerkin methods: Algorithms, Analysis and Applications, J. Hesthaven and T. Warburton.
 3. dealII library: http://www.dealii.org
 
+
+Other resources:
+https://openfoamwiki.net/index.php/Write_OpenFOAM_meshes

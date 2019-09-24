@@ -5,12 +5,15 @@
 #include "Face.h"
 #include "Cell.h"
 #include "BoundaryConditions.h"
+#include "BoundaryConditionsMPI.h"
 #include "GeometryIO.h"
 #include "RefCell.h"
 #include "RefFace.h"
 #include "InternalFluxSolver.h"
 #include "RiemannSolver.h"
+#include <mpi.h>
 
+#define MAX_MPI_NEIGHBOURS      1000
 class DG{
 	
 public:
@@ -23,13 +26,16 @@ public:
 	bool VariableNameFlag;
 	bool pointsFlag;
 	bool facesFlag;
+	bool ghostFacesFlag;
 	bool cellsFlag;
 	bool bcondFlag;
+	bool bcondMPIFlag;
 	bool laplaceFlag;
 	bool VariableSizeFlag;
 	bool cummulativeVariableSizeFlag;
 	bool variableFlag;
 	bool refVariableFlag;
+	bool MPIBufferflag;
 
 // 1. Parameters related to geometrical data (or domain data)
 	/// Contains the location of the case
@@ -40,12 +46,16 @@ public:
 	Point* points;	
 	/// Array of faces
 	Face* faces;	
+	/// Array of ghost faces
+	Face* ghostFaces;		
 	/// Array of cells
 	Cell* cells;	
 	/// Array of boundary conditions
 	BoundaryConditions* bcond;	
+	/// Array of MPI boundary conditions
+	BoundaryConditionsMPI* bcondMPI;
 	/// Number of points, faces, cells, boundaryFaces, internalFaces and boundaryConditions
-	int noOfPoints, noOfFaces, noOfCells, noOfBoundaryFaces, noOfBoundaryConditions, noOfInternalFaces;
+	int noOfPoints, noOfFaces, noOfCells, noOfBoundaryFaces, noOfBoundaryConditions, noOfInternalFaces, noOfBoundaryConditionsMPI;
 	/// Reference cells. Refer refCell.cpp and include/cellTypes.h for details 
 	RefCell referenceCells[4];
 	/// Reference faces.
@@ -113,7 +123,7 @@ public:
 	void (* findInternalFlux)(Cell *cell, int rkstep); 
 
 	/// A function pointer for solving the Riemann solver. Points to the appropriate Riemann solver specified in RiemannSolvers.h depending on the system of equation and Riemann solver choice. 
-	void (* solveRiemannProblem)(Face *face, int rkstep); 
+	void (* solveRiemannProblem)(Face *face, int rkstep, int procBoundariesStartFace, double *receiveBuffer); 
 
 	/// Assigns the appropriate Riemann solver.
 	void assignRiemannSolver();
@@ -283,7 +293,17 @@ public:
 	/// RK3 timestepping
 	void integratorRK3();
 
-
+        ///Setup MPI Buffers
+        void setMPIBuffers();
+        
+        // Get my MPI Process id/rank
+        int getMyRank();
+        
+        // Copy data in MPI buffers and exchange data  
+        void exchangeBuffer(int rkStep); 
+        
+        // Check errors in MPI Communication
+        void checkMPIErrors(int mpiError);
 
 private:
 // Variables
@@ -325,8 +345,16 @@ private:
 	/// Time after which printing data is to be done
 	double printTime;				
 	/// Integrator 0: Euler, 1-4: Runge Kutta
-	int integratorType;										
-
+	int integratorType;
+	
+// 4. MPI related variables
+        /// My MPI processe ID/rank
+        int myRank;
+        int MPIBufferSize;
+        double *sendBuffer;
+        double *receiveBuffer;
+        int noOfGhostFaces;
+        int procBoundariesStartFace;    // Starting face number for the processor boundaries. All the face numbers after this face number will be assumed to be on the processor boundary.
 };
 
 

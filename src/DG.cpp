@@ -15,8 +15,9 @@
 // Class constructor 
 DG::DG(string path, int order, IntFlag::intflag intType){ 
 	//intType: 0:inexact integration, 1:exact integration
-
-	this->path = path;
+        
+        MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
+	this->path = path + "/processor"+ varToString(myRank);
 	this->order = order;
 	this->intType = intType;
 
@@ -30,11 +31,16 @@ DG::DG(string path, int order, IntFlag::intflag intType){
 	this->cummulativeVariableSizeFlag = false;
 	this->pointsFlag = false;
 	this->facesFlag = false;
+	this->ghostFacesFlag = false;
 	this->cellsFlag = false;
 	this->bcondFlag = false;
+	this->bcondMPIFlag = false;
 	this->laplaceFlag = false;
 	this->variableFlag = false;
 	this->refVariableFlag = false;
+        this->MPIBufferflag = false;
+        
+        cout << "My MPI rank is " << myRank;
 };
 
 // Class destructor 
@@ -47,6 +53,9 @@ DG::~DG(void){
 	if (pointsFlag == true){
 		delete[] points;
 	};
+	if (ghostFacesFlag == true){
+		delete[] ghostFaces;
+	};
 	if (facesFlag == true){
 		delete[] faces;
 	};
@@ -55,6 +64,13 @@ DG::~DG(void){
 	};
 	if (bcondFlag == true){
 		delete[] bcond;
+	};
+	if (bcondMPIFlag == true){
+		delete[] bcondMPI;
+	};
+	if (MPIBufferflag == true){
+		delete[] sendBuffer;
+		delete[] receiveBuffer;
 	};
 }; 
 
@@ -161,6 +177,9 @@ void DG::setFunctionalDetails(int order, IntFlag::intflag intType, Solver::solve
 	this->systemType = sys;
 };
 
+int DG::getMyRank(){
+        return this->myRank;
+}
 void DG::assignSystemOfEquations(){
 	// refer src/internalFluxSolver.cpp for implementation of each of the fluxes
 	switch (this->systemType)
@@ -378,7 +397,8 @@ void DG::readVariableArray(double Time){
 	string time;
 	double value;
 	time = varToString(Time); //double Time converted into a string. Refer mathAndOtherFunctions.cpp 
-	timePath = path + "/"+time+"/";
+	timePath = path + "/"+time+"/";;
+	
 	cout << "Reading variable array from folder " << timePath << "\n\n" <<  endl;
 
 	
@@ -655,7 +675,7 @@ void DG::readVariableArray(double Time){
 // to all the DOF points of the cell
 void DG::assignVariabletoCell(){
 	int nDOF,Np;
-
+        nDOF = 0;
 	// these arrays are used for Euler and NS equations
 	TensorO1<double> primitiveVariableVector(totNoOfVariable);
 	TensorO1<double> conservedVariableVector(totNoOfVariable);
@@ -781,6 +801,7 @@ void DG::assignVariabletoCell(){
 // to all the DOF points of the cell
 void DG::integrateCellVariable(){
 	int nDOF,Np;
+	nDOF = 0;
 	FunctionalSpace F(this->order, this->intType);
 
 	// these arrays are used for Euler and NS equations
@@ -851,7 +872,7 @@ void DG::integrateCellVariable(){
 // to all the DOF points of the Face
 void DG::assignFluxVectortoFace(){
 	int nDOF,Np;
-
+        nDOF = 0;
 	for(int i=0;i<this->noOfFaces;i++){
 		
 		// Number of DOF points for different faces
@@ -892,7 +913,7 @@ void DG::writeVariableRefArray(double Time){
 	time = varToString(Time);
 	string timePath,fileName,word; //for the output files
 	string headerFile; //for a sample file for copying the header
-	timePath = path + "/" + time + "/";
+	timePath = path + "/"+time+"/";;
 	mkdir(timePath.c_str(),0777);
 	double value;
 	for (Index nvar=0; nvar < noOfVariable; nvar++){
@@ -1012,7 +1033,7 @@ void DG::writeVariableArray(double Time){
 	time = varToString(Time);
 	string timePath,fileName,word; //for the output files
 	string headerFile; //for a sample file for copying the header
-	timePath = path + "/" + time + "/";
+	timePath = path + "/"+time+"/";;
 	mkdir(timePath.c_str(),0777);
 	double value;
 	for (Index nvar=0; nvar < noOfVariable; nvar++){
@@ -1122,7 +1143,71 @@ void DG::writeVariableArray(double Time){
 	}
 };
 
+void DG::setMPIBuffers(){
+	int buffersize = 0;
+	int beginFace = 0;
+	int endFace = 0;
+	for (int ibcond = 0; ibcond < noOfBoundaryConditionsMPI; ibcond++){
+	        beginFace = bcondMPI[ibcond].getStartFace();
+	        endFace = bcondMPI[ibcond].getStartFace() + bcondMPI[ibcond].getNoOfFaces();
+	        cout << "bcondMPI[ibcond].getStartFace() : " << bcondMPI[ibcond].getStartFace() << endl;
+	        cout << "bcondMPI[ibcond].getNoOfFaces()" << bcondMPI[ibcond].getNoOfFaces() << endl;
+	       buffersize += faces[0].getNDOF() * bcondMPI[ibcond].getNoOfFaces();
+	}
+	assert((solverType == Solver::LLF) && "As of now, MPI implementation only supports LLF solvers.\n");
+	this->MPIBufferSize = buffersize*5;//cummulativeVariableSize.getSize();     
+	sendBuffer = new double[this->MPIBufferSize];
+	receiveBuffer = new double[this->MPIBufferSize];
+	this->MPIBufferflag = true;
+        cout << "MPIBufferSize : " << this->MPIBufferSize  << endl;
+        cout << "noOfBoundaryConditionsMPI :" << noOfBoundaryConditionsMPI << endl;
+}
 
+void DG::checkMPIErrors(int mpiError)
+{
+        int len;
+        char errorString[MPI_MAX_ERROR_STRING];
+        if(mpiError != MPI_SUCCESS)
+        {
+                MPI_Error_string(mpiError,errorString,&len);
+                cout << "Error in MPI communication : " << errorString << endl;
+        }
+}
+	
+void DG::exchangeBuffer(int rkstep){
+	int beginFace = 0;
+	int endFace = 0;
+	int index = 0;
+	int boundaryBeginIndex = 0;
+	MPI_Request requestSend[MAX_MPI_NEIGHBOURS], requestRecv[MAX_MPI_NEIGHBOURS];
+        MPI_Status status[MAX_MPI_NEIGHBOURS];
+        int mpiError;
+	
+	for (int ibcond = 0; ibcond < noOfBoundaryConditionsMPI; ibcond++){
+	        beginFace = bcondMPI[ibcond].getStartFace();
+	        endFace = bcondMPI[ibcond].getStartFace() + bcondMPI[ibcond].getNoOfFaces();
+	        boundaryBeginIndex = index;
+	        for(int iface = beginFace; iface < endFace; iface++){
+	                for(int iDOF = 0; iDOF < faces[iface].getNDOF(); iDOF++){
+	                // copy values of the conserved variable vector
+			        for (int nVar=0; nVar<5; nVar++){
+			                if(faces[iface].getOwnerCell() != NULL)
+			                {			                			                
+        	                                sendBuffer[index++] = faces[iface].getOwnerCell()->getVariable(rkstep, nVar, iDOF);
+        	                        }
+        	                        else
+        	                        {
+        	                                cout << "Error! faces[iface].getOwnerCell() == NULL for iface = " << iface << " on MPI rank = " << this->getMyRank() << endl;
+        	                        }       
+			        }
+			        cout << endl;
+	                }        
+	        }	        
+	        checkMPIErrors(MPI_Isend(sendBuffer+boundaryBeginIndex, (index-boundaryBeginIndex), MPI_DOUBLE, bcondMPI[ibcond].getNeighbProcNo(), rkstep, MPI_COMM_WORLD, &requestSend[ibcond]));
+	        checkMPIErrors(MPI_Irecv(receiveBuffer+boundaryBeginIndex, (index-boundaryBeginIndex), MPI_DOUBLE, bcondMPI[ibcond].getNeighbProcNo(), rkstep, MPI_COMM_WORLD, &requestRecv[ibcond]));
+	}
+	checkMPIErrors(MPI_Waitall(noOfBoundaryConditionsMPI, requestRecv, status));
+} 	
 	
 // This function initializes arrays and reads geometry files
 // and populates the points, faces and cells arrays.
@@ -1140,6 +1225,10 @@ void DG::createDomain(){
 	this->noOfFaces = Domain.getNoOfFaces();
 	faces = new Face[this->noOfFaces];
 	this->facesFlag = true;
+	
+	this->noOfGhostFaces = Domain.getNoOfGhostFaces();
+	ghostFaces = new Face[this->noOfGhostFaces];
+	this->ghostFacesFlag = true;
 
 	this->noOfCells = Domain.getNoOfCells();
 	cells = new Cell[this->noOfCells];
@@ -1150,9 +1239,21 @@ void DG::createDomain(){
 	bcond = new BoundaryConditions[this->noOfBoundaryConditions];
 	this->bcondFlag = true;
 	
+	this->noOfBoundaryConditionsMPI = Domain.getNoOfBoundaryConditionsMPI();
+	if (this->noOfBoundaryConditionsMPI > MAX_MPI_NEIGHBOURS)
+	{
+	        cout << "Error!!! noOfBoundaryConditionsMPI is larger than MAX_MPI_NEIGHBOURS. Increase value of MAX_MPI_NEIGHBOURS. Currently it is set at " << MAX_MPI_NEIGHBOURS << endl;
+	        MPI_Finalize();
+	        exit(-1);
+	}
+	bcondMPI = new BoundaryConditionsMPI[this->noOfBoundaryConditionsMPI];
+	this->bcondMPIFlag = true;
+
+	
 	// Populating the data for the arrays
 	// bcond for boundary conditions
-	Domain.fillDataArrays(geomPath, points, faces, cells, bcond); //setCellType is called internally
+	Domain.fillDataArrays(geomPath, points, faces, cells, bcond, bcondMPI, &procBoundariesStartFace); //setCellType is called internally
+	
 
 	// Get cell information for numerical integration 
 	this->setupReferenceCellsArray();
@@ -1206,6 +1307,7 @@ void DG::createDomain(){
 
 
 	this->assignBoundaryConditions();
+	this->setMPIBuffers();
 };
 
 // Printing the Domain information
@@ -1883,7 +1985,7 @@ void DG::computeCellMatrix(){
 		if (this->noOfCells == 1){
 			percentComplete = 100;
 		};
-		printProgressBar(percentComplete);
+		//printProgressBar(percentComplete);
 		//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 		Cell *cell;
@@ -2214,12 +2316,27 @@ void DG::calculateFaceJacobian(){
 
 void DG::computeFlux(int rkstep){
 
+
+        //Processor boundary exchange
+        
+        //copy data to the exchange buffer
+	/*for (int ibcond = 0; ibcond < noOfBoundaryConditionsMPI; ibcond++){
+	        startFace = bcondMPI[ibcond].startFace;
+	        endFace = bcondMPI[ibcond].startFace + bcondMPI[ibcond].noOfFaces;
+	        for(int iface = startFace; iface < endFace; iface++){
+	                for(int iDOF = 0; iDOF < faces[iface].getNDOF(); iDOF++){
+	                buffersize++;
+	                
+	                }        
+	        }
+	}*/
+
 //#pragma omp parallel for
 	// 1. Compute the flux for faces based on RK substep data. Riemann problem solution.
 	//    This fills face.Flux array (called as face->getFlux(varNo, DOF));
 	for(Index nface=0; nface<this->noOfFaces; nface++){
 
-		(* solveRiemannProblem)(&this->faces[nface],  rkstep); 
+		(* solveRiemannProblem)(&this->faces[nface],  rkstep, procBoundariesStartFace, receiveBuffer); 
 
 		// solveRiemannSolver is a function pointer which points to an appropriate solver from src/RiemannSolver.cpp
 		// The value of the function pointer is set in the function DG::assignRiemannSolver() 
@@ -2322,10 +2439,14 @@ void DG::computeRES(int rkstep){
 				FCArray = face->getOwnerDOFPointsArray();
 				addFlag = 1.0 * face->normalDirFlag; 
 			}
-			else{
+			else if(cells[ncell].faceRelationshipArray.getValue(f) == 1){
 				//1 means neighbour
 				FCArray = face->getNeighbourDOFPointsArray();
 				addFlag = -1.0 * face->normalDirFlag;
+			}
+			else
+			{
+			        cout << "Error!!! myrank = " << myRank << " ncell = " << ncell << " f = " << f << " noOfFaces = " << noOfFaces << " cells[ncell].faceRelationshipArray.getValue(f) = " << cells[ncell].faceRelationshipArray.getValue(f) << endl;
 			}
 
 
@@ -2343,6 +2464,8 @@ void DG::computeRES(int rkstep){
 				else if (systemType == System::Euler or systemType == System::Heat or systemType == System::NavierStokes){
 					for (int nVar=0; nVar<totNoOfVariable; nVar++){
 						double fluxValue = addFlag*face->getFlux(nVar, DOF);
+						if(DOFc > 100)
+						cout << "myRank = " << myRank << " ncell = " << ncell << " f = " << f << ", nVar = " << nVar << ", DOFc = " << DOFc  << ", totNoOfVariable = "<< totNoOfVariable << endl;
 						cells[ncell].getFluxStarVector()->addValue(f, nVar, DOFc, fluxValue); 
 					};
 				};
@@ -2453,6 +2576,8 @@ void DG::computeRES(int rkstep){
 void DG:: calculateCFL(){
 	this->CFL = 0.0;
 	this->charSpeed = 0.0;
+	double tempCFL1 = 0.0;
+	double tempCFL2 = 0.0;
 
 	TensorO1<double> consVarVector(5);
 	TensorO1<double> primVarVector(5);
@@ -2484,7 +2609,11 @@ void DG:: calculateCFL(){
 		};
 	};
 
-	this->CFL = this->charSpeed * this->deltaT / this->charLength; 
+	tempCFL1 = this->charSpeed * this->deltaT / this->charLength; 
+	MPI_Allreduce( &tempCFL1, &tempCFL2, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD );
+	this->CFL  = tempCFL2;
+	
+	cout << "deltaT = " << deltaT  << " CFL = " << CFL << endl;
 };
 
 
@@ -2510,9 +2639,16 @@ void DG:: runApplication(){
 
 	// Main time loop
 	int IterationNumber = 0;
+	int myRank;
+	
+	MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
 
-	cout << "\nRunning Time Loop: " << endl;
+        if(myRank==0)
+        {
+	        cout << "\nRunning Time Loop: " << endl;
+	}
 	double tstart = omp_get_wtime();
+	
 
 	string fileName = path + "/" + "Error.dat";
 	ofstream file(fileName.c_str());
@@ -2538,9 +2674,11 @@ void DG:: runApplication(){
 		nowTime += this->deltaT;
 		IterationNumber ++;
 
-		string message = "  CFL: " + varToString(this->CFL);
-		printProgressBar(nowTime / this->endTime * 100.0, message);
-
+		if(myRank==0)
+		{
+		        string message = "  CFL: " + varToString(this->CFL);
+		        printProgressBar(nowTime / this->endTime * 100.0, message);
+                }
 		// Data writing if condition
 		if(nowTimePrint >= this->printTime){ 
 			// if nowTime is greater than printTime then print data
@@ -2573,6 +2711,10 @@ void DG:: integratorRK3(){
 	
 	// First Step
 	//applyFilterVariable(0);
+	
+	
+	
+        exchangeBuffer(0);
 	this->computeFlux(0);					// Uncomment 
 	computeRES(0);
 	//applyFilterResidual(0);
@@ -2596,6 +2738,8 @@ void DG:: integratorRK3(){
 
 	// Second Step
 	//applyFilterVariable(1);
+	
+        exchangeBuffer(1);
 	this->computeFlux(1);					// Uncomment 
 	computeRES(1);
 
@@ -2616,6 +2760,8 @@ void DG:: integratorRK3(){
 
 	// Third and Final Step
 	//applyFilterVariable(2);
+	
+        exchangeBuffer(2);
 	this->computeFlux(2);					// Uncomment 
 	computeRES(2);
 	//applyFilterResidual(2);

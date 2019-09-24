@@ -1,8 +1,9 @@
 #include"RiemannSolver.h"
+#include <mpi.h>
 
 using namespace std;
 
-void scalarRiemannSolver(Face *face, int rkstep){
+void scalarRiemannSolver(Face *face, int rkstep, int procBoundariesStartFace, double *receiveBuffer){
 	TensorO1<double> vel(3);
 	double T;
 
@@ -90,19 +91,19 @@ void scalarRiemannSolver(Face *face, int rkstep){
 
 
 
-void BurgerRiemannSolver(Face *face, int rkstep){
+void BurgerRiemannSolver(Face *face, int rkstep, int procBoundariesStartFace, double *receiveBuffer){
 };
 
-void centralDifferenceHeatEquation(Face *face, int rkstep){
+void centralDifferenceHeatEquation(Face *face, int rkstep, int procBoundariesStartFace, double *receiveBuffer){
 };
 
-void RoeSolver(Face *face, int rkstep){
+void RoeSolver(Face *face, int rkstep, int procBoundariesStartFace, double *receiveBuffer){
 };
 
-void RoeSolverNS(Face *face, int rkstep){
+void RoeSolverNS(Face *face, int rkstep, int procBoundariesStartFace, double *receiveBuffer){
 };
 
-void LLFSolver(Face *face, int rkstep){
+void LLFSolver(Face *face, int rkstep, int procBoundariesStartFace, double *receiveBuffer){
 	// Local Lax Frierich
 
 	// Create local vectors
@@ -133,18 +134,27 @@ void LLFSolver(Face *face, int rkstep){
 	TensorO1<double> momentumR(3);
 	TensorO1<double> LSR(5);
 	TensorO1<double> RSR(5);
-
-
+	int tmpFaceIndex;
+			
 	// Find flux vectors for LLF solver
-	if (face->getNeighbourCell() != NULL){
+	if ((face->getNeighbourCell() != NULL) || (face->getId() >= procBoundariesStartFace)) {
 		for (int DOF=0; DOF< face->getNDOF(); DOF++){
+		        
 			int DOFc = face->getOwnerDOFPoint(DOF);
 			int DOFn = face->getNeighbourDOFPoint(DOF);
 
 			// copy values of the conserved variable vector
 			for (int nVar=0; nVar<5; nVar++){
 				leftStateVector.setValue(nVar, face->getOwnerCell()->getVariable(rkstep, nVar, DOFc));
-				rightStateVector.setValue(nVar, face->getNeighbourCell()->getVariable(rkstep,nVar,DOFn));
+				if(face->getId() >= procBoundariesStartFace) // face on the processor boundary
+				{
+				        tmpFaceIndex = (face->getId() - procBoundariesStartFace);
+				        rightStateVector.setValue(nVar, receiveBuffer[tmpFaceIndex*DOFc*5+ DOF*5 +nVar]);
+				}
+				else
+				{
+				        rightStateVector.setValue(nVar, face->getNeighbourCell()->getVariable(rkstep,nVar,DOFn));
+				}
 			};
 
 			// first left state
@@ -235,6 +245,6 @@ void LLFSolver(Face *face, int rkstep){
 	};
 };
 
-void LLFSolverNS(Face *face, int rkstep){
+void LLFSolverNS(Face *face, int rkstep, int procBoundariesStartFace, double *receiveBuffer){
 };
 

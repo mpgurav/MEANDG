@@ -106,8 +106,17 @@ int Geometry::setNoOfFaces(string& dir){
 	return noOfFaces;
 }
 
+int Geometry::setNoOfGhostFaces(string& dir){
+	//Need not call this function as readBoundaryFile function will set this value
+	return noOfGhostFaces;
+}
+
 int Geometry::getNoOfFaces()const{
 	return this->noOfFaces;
+};
+
+int Geometry::getNoOfGhostFaces()const{
+	return this->noOfGhostFaces;
 };
 
 int Geometry::setNoOfBoundaryConditions(string& dir){
@@ -115,12 +124,16 @@ int Geometry::setNoOfBoundaryConditions(string& dir){
 	// The boundary file contains all releveant details regarding boundary conditions
 	string boundaryFile;
 	boundaryFile = dir + "/boundary";
+	
+	cout << "boundaryFile : " << boundaryFile << endl;
 
 	assert(fileExists(boundaryFile) && "Geometry::setNoOfBoundaryConditions() returns error. Make sure that the file exists.\n");
 	ifstream file(boundaryFile.c_str());
-	string line;
-	int i,j,noOfPoints,flag=0,jmax=0;
+	string line, tmpWord;
 	
+	string procline = "procBoundary";       // Standard string used by the Openfoam, e.g. procBoundary0to1 
+	int i,j,noOfPoints,flag=0,jmax=0;
+	int noOfBoundaryConditionsMPI=0;       // Total number of boundaries for MPI communication
 	if(file.good()){
 		while(getline(file,line)){
 			if(isdigit(line[0])){
@@ -134,18 +147,35 @@ int Geometry::setNoOfBoundaryConditions(string& dir){
 				istringstream input(line);
 				input>>noOfBoundaryConditions;
 			}
-			
+			stringstream input(line);
+			input>>tmpWord;
+			if(tmpWord.compare(0,12,"procBoundary",0,12) == 0){
+			        //Processor boundary detected!
+			        noOfBoundaryConditionsMPI++;
+			}		
 		}
 	}
 	file.close();
-
+        noOfBoundaryConditions = noOfBoundaryConditions - noOfBoundaryConditionsMPI;
 	this->noOfBoundaryConditions = noOfBoundaryConditions;
+	this->noOfBoundaryConditionsMPI = noOfBoundaryConditionsMPI;
 	return noOfBoundaryConditions;
 	
+	
+}
+
+
+int Geometry::setNoOfBoundaryConditionsMPI(string& dir){
+        //need not to call this function! setNoOfBoundaryConditions does the work!
+	return this->noOfBoundaryConditionsMPI;
 }
 
 int Geometry::getNoOfBoundaryConditions()const{
 	return this->noOfBoundaryConditions;
+};
+
+int Geometry::getNoOfBoundaryConditionsMPI()const{
+	return this->noOfBoundaryConditionsMPI;
 };
 
 int Geometry::setNoOfBoundaryFaces(string& dir){
@@ -338,17 +368,22 @@ void Geometry::readFaceFile(string& faceFile, Face *faces, Point* points){
 
 // Function to read the boundary conditions files in OpenFOAM format
 // takes the name of the boundary file and appends the array of boundary condition 
-void Geometry::readBoundaryFile(string& boundaryFile, BoundaryConditions *bcond){
+void Geometry::readBoundaryFile(string& boundaryFile, BoundaryConditions *bcond, BoundaryConditionsMPI *bcondMPI, int *procBoundariesStartFace){
 	assert(fileExists(boundaryFile) && "Geometry::readBoundaryFile() returns error. Make sure that the file exists.\n");
 
 	ifstream file(boundaryFile.c_str());
-	string line,word1,word2,word3;
+	string line,word1,word2,word3, line1;
 	int i,j,noOfBoundaryConditions;
 	
 	int id = 0;
+	int idMPI = 0;
 	int flag = 0;
 
 	int count = 0;
+	int countProcBoundaries = 0;
+	int tmpGhostFaces = 0;
+	int procBoundariesFlag = 0;
+	procBoundariesStartFace[0] = 0;
 	if(file.good()){
 		while(getline(file,line)){
 			
@@ -364,6 +399,12 @@ void Geometry::readBoundaryFile(string& boundaryFile, BoundaryConditions *bcond)
 			else if(line[0]!='(' && flag == 1){
 				stringstream input(line);
 				input>>word1;
+			        if(word1.compare(0,12,"procBoundary",0,12) == 0){
+			                //Processor boundary detected!
+			                flag = 4;
+			                continue;
+			        }			
+				//cout << "word1, flag = " << word1 << flag << endl;
 				bcond[id].setId(id);
 				bcond[id].setName(word1);
 				flag = 2;
@@ -388,7 +429,6 @@ void Geometry::readBoundaryFile(string& boundaryFile, BoundaryConditions *bcond)
 					stringstream input1(word2);
 					input1>>i;
 					bcond[id].setNoOfFaces(i);
-
 				}
 				else if(word1=="startFace"){
 					input>>word2;
@@ -405,13 +445,68 @@ void Geometry::readBoundaryFile(string& boundaryFile, BoundaryConditions *bcond)
 				else if(word1[0]==')'){
 					flag=0;
 				}
-			}		
-
+			}
+			else if(flag==4){       // Processor (MPI) boundary condition
+				stringstream input(line);
+				input>>word1;
+				if(word1=="type"){
+					input>>word2;
+					word2.erase(word2.find(";"),-1);
+					assert(word2 == "processor" && "Geometry::readBoundaryFile() returns error. Error in reading procBoundary.\n");
+				}
+				else if(word1=="nFaces"){
+					input>>word2;
+					word2.erase(word2.find(";"),-1);
+					stringstream input1(word2);
+					input1>>i;
+					bcondMPI[idMPI].setNoOfFaces(i);
+                                        tmpGhostFaces += i;
+                                        cout << "bcondMPI[idMPI].setNoOfFaces(i) :" << bcondMPI[idMPI].getNoOfFaces() << endl;
+				}
+				else if(word1=="startFace"){
+					input>>word2;
+					word2.erase(word2.find(";"),-1);
+					stringstream input1(word2);
+					input1>>i;
+					if(procBoundariesFlag==0)
+					{
+					        procBoundariesFlag = 1;
+					        procBoundariesStartFace[0] = i;
+					}
+					bcondMPI[idMPI].setStartFace(i);
+					cout << "bcondMPI[idMPI].setStartFace(i) :" << bcondMPI[idMPI].getStartFace() << " procBoundariesStartFace = " << procBoundariesStartFace[0] << endl;
+				}
+				else if(word1=="myProcNo"){
+					input>>word2;
+					word2.erase(word2.find(";"),-1);
+					stringstream input1(word2);
+					input1>>i;
+					bcondMPI[idMPI].setMyProcNo(i);
+					cout << "bcondMPI[idMPI].setMyProcNo(i) :"<< bcondMPI[idMPI].getMyProcNo() << endl;
+				}
+				else if(word1=="neighbProcNo"){
+					input>>word2;
+					word2.erase(word2.find(";"),-1);
+					stringstream input1(word2);
+					input1>>i;
+					bcondMPI[idMPI].setNeighbProcNo(i);
+					cout << "bcondMPI[idMPI].setNeighbProcNo(i) : "<< bcondMPI[idMPI].getNeighbProcNo() << endl;
+				}
+				else if(word1[0]=='}'){
+					flag=1;
+					idMPI++;
+					countProcBoundaries ++;
+				}
+				else if(word1[0]==')'){
+					flag=0;
+				}
+			}
 			
 		}
 	}
-
-	assert(count == this->getNoOfBoundaryConditions() && "Geometry::readBoundaryFile() returns error. Make sure that the file is read correctly.\n");
+        noOfGhostFaces = tmpGhostFaces;
+	assert((count) == this->getNoOfBoundaryConditions() && "Geometry::readBoundaryFile() returns error. Make sure that the file is read correctly: BoundaryConditions.\n");
+	assert((countProcBoundaries) == this->getNoOfBoundaryConditionsMPI() && "Geometry::readBoundaryFile() returns error. Make sure that the file is read correctly: BoundaryConditionsMPI.\n");
 }
 
 
@@ -795,7 +890,7 @@ void Geometry::assignVertexSigns(Cell *cells, Face *faces){
 
 
 
-void Geometry::fillDataArrays(string& dir, Point* points, Face* faces, Cell* cells, BoundaryConditions* bcond){
+void Geometry::fillDataArrays(string& dir, Point* points, Face* faces, Cell* cells, BoundaryConditions* bcond, BoundaryConditionsMPI* bcondMPI, int *procBoundariesStartFace){
 
 	string pointFile = dir+"/points";
 	string faceFile = dir+"/faces";
@@ -818,7 +913,7 @@ void Geometry::fillDataArrays(string& dir, Point* points, Face* faces, Cell* cel
 	};
 
 	// Addition for boundary conditions (new)
-	this->readBoundaryFile(boundaryFile,bcond); //populate boundary array
+	this->readBoundaryFile(boundaryFile,bcond,bcondMPI,procBoundariesStartFace); //populate boundary array
 	
 	this->readOwnerFile(ownerFile,cells,faces); //populate cells array and partially fill with definingFaces
 	this->appendNeighbourFile(neighbourFile,cells,faces); //complete the list of definingFaces per cell
@@ -859,6 +954,7 @@ namespace Test{
 
 
 		string dirName = "app/Tests/1x1x1/constant/polyMesh";
+		int procBoundariesStartFace;
 		Geometry geo;
 		geo.getProblemData(dirName);
 
@@ -890,8 +986,11 @@ namespace Test{
 
 		BoundaryConditions* bcond;
 		bcond = new BoundaryConditions[5];
+		
+		BoundaryConditionsMPI* bcondMPI;
+		bcondMPI = new BoundaryConditionsMPI[5];
 
-		geo.fillDataArrays(dirName, points, faces, cells, bcond);
+		geo.fillDataArrays(dirName, points, faces, cells, bcond, bcondMPI, &procBoundariesStartFace);
 
 		enum coord{x,y,z};
 		for (Index c = 0; c< geo.getNoOfCells(); c++){
@@ -910,9 +1009,6 @@ namespace Test{
 		delete[] faces;
 		delete[] cells;
 		delete[] points;
-
-
-
 
 
 		cout <<"Test::TestGeometryIO() passed.\n";

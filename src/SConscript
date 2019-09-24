@@ -1,6 +1,7 @@
 # This Sconscript details the build instructions to the compiler
 
-env = Environment(CCFLAGS=' -I include -g -O3 -fopenmp -DEIGEN_MPL2_ONLY ') # All the flags go here. -I include tells where header files are located 
+env = Environment(CCFLAGS=' -I include -g -O3 -fopenmp -Wno-sign-compare -Wno-unused-variable -Wno-unused-but-set-variable -Wno-maybe-uninitialized -Wno-parentheses -Wno-switch -DEIGEN_MPL2_ONLY ') # All the flags go here. -I include tells where header files are located 
+env.Replace(CXX = "/usr/lib64/mpich/bin/mpic++")
 env.Append(LINKFLAGS = ['-fopenmp'])
 # list of all the source files
 # add the new files here (only cpp)
@@ -16,6 +17,7 @@ sources = Split("""
 		Face.cpp
 		Cell.cpp
 		BoundaryConditions.cpp
+		BoundaryConditionsMPI.cpp
 
 		GeometryIO.cpp
 
@@ -31,7 +33,6 @@ sources = Split("""
 		""")
 
 object_list = env.Object(source = sources)
-
 env.Program(target = '../out.exe' , source = object_list) # creates output file inside the project folder instead of the src folder
 
 

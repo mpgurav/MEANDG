@@ -151,6 +151,10 @@ void TensorO3<numType>::setValue(unsigned int r, unsigned int s, unsigned int t,
 
 template<typename numType>
 void TensorO3<numType>::addValue(unsigned int r, unsigned int s, unsigned int t, numType N){
+        if(!(r<this->size[0]  and s<this->size[1]  and t<this->size[2]))
+        {
+                cout << "Index exceeds the size of the vector. r = " << r << " s = " << s << " t = " << t << endl;
+        }
 	assert(r<this->size[0]  and s<this->size[1]  and t<this->size[2] && "Index exceeds the size of the vector.");
 	this->value[r][s][t] += N;
 };

@@ -7,6 +7,7 @@
 #include "Face.h"
 #include "Cell.h"
 #include "BoundaryConditions.h"
+#include "BoundaryConditionsMPI.h"
 
 
 class Geometry{
@@ -24,11 +25,17 @@ class Geometry{
 		/// Get number of faces 
 		int setNoOfFaces(string &dir);
 
+		/// Get number of faces 
+		int setNoOfGhostFaces(string &dir);
+
 		/// Get number of cells
 		int setNoOfCells(string &dir);
 
 		/// Get number of boundary conditions
 		int setNoOfBoundaryConditions(string &dir);
+
+		/// Get number of boundary conditions ==> need not to call this function! setNoOfBoundaryConditions does the work!
+		int setNoOfBoundaryConditionsMPI(string &dir);
 
 		/// Get number of boundary faces
 		int setNoOfBoundaryFaces(string &dir);
@@ -43,11 +50,17 @@ class Geometry{
 		/// Get number of faces 
 		int getNoOfFaces()const;
 
+		/// Get number of faces 
+		int getNoOfGhostFaces()const;
+
 		/// Get number of cells
 		int getNoOfCells()const;
 
 		/// Get number of boundary conditions
 		int getNoOfBoundaryConditions()const;
+
+		/// Get number of boundary conditions
+		int getNoOfBoundaryConditionsMPI()const;
 
 		/// Get number of boundary faces
 		int getNoOfBoundaryFaces()const;
@@ -67,7 +80,7 @@ class Geometry{
 
 		/// Function to read the boundary conditions files in OpenFOAM format
 		/// takes the name of the boundary file and appends the array of boundary condition 
-		void readBoundaryFile(string& boundaryFile, BoundaryConditions* bcond);
+		void readBoundaryFile(string& boundaryFile, BoundaryConditions* bcond, BoundaryConditionsMPI* bcondMPI, int *procBoundariesStartFace);
 
 		/// Function to read the owner file in OpenFOAM format 
 		/// takes the name of face file and pointers to arrays of objects of Face class and Cell class as an input
@@ -108,7 +121,7 @@ class Geometry{
 		void assignVertexSigns(Cell *cells, Face *faces);
 
 		/// Fill all the data arrays
-		void fillDataArrays(string& dir, Point* points, Face* faces, Cell* cells, BoundaryConditions* bcond);
+		void fillDataArrays(string& dir, Point* points, Face* faces, Cell* cells, BoundaryConditions* bcond, BoundaryConditionsMPI* bcondMPI, int *procBoundariesStartFace);
 
 		/// Print the domain details
 		void print();
@@ -120,6 +133,9 @@ class Geometry{
 
 		/// Number of faces in the domain
 		int noOfFaces;
+
+		/// Number of faces in the domain
+		int noOfGhostFaces;
 
 		/// Number of cells in the domain
 		int noOfCells;
@@ -139,7 +155,8 @@ class Geometry{
 		/// Characteristic length
 		double charLength;
 
-
+                /// Total number of MPI boundary conditions
+                int noOfBoundaryConditionsMPI;
 };
 
 namespace Test{
