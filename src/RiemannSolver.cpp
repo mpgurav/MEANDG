@@ -135,9 +135,11 @@ void LLFSolver(Face *face, int rkstep, int procBoundariesStartFace, double *rece
 	TensorO1<double> LSR(5);
 	TensorO1<double> RSR(5);
 	int tmpFaceIndex;
+	int numDOF;
 			
 	// Find flux vectors for LLF solver
 	if ((face->getNeighbourCell() != NULL) || (face->getId() >= procBoundariesStartFace)) {
+	        numDOF = face->getNDOF();
 		for (int DOF=0; DOF< face->getNDOF(); DOF++){
 		        
 			int DOFc = face->getOwnerDOFPoint(DOF);
@@ -149,7 +151,7 @@ void LLFSolver(Face *face, int rkstep, int procBoundariesStartFace, double *rece
 				if(face->getId() >= procBoundariesStartFace) // face on the processor boundary
 				{
 				        tmpFaceIndex = (face->getId() - procBoundariesStartFace);
-				        rightStateVector.setValue(nVar, receiveBuffer[tmpFaceIndex*DOFc*5+ DOF*5 +nVar]);
+				        rightStateVector.setValue(nVar, receiveBuffer[tmpFaceIndex*numDOF*5+ DOF*5 +nVar]);
 				}
 				else
 				{

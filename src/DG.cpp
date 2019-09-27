@@ -1179,6 +1179,7 @@ void DG::exchangeBuffer(int rkstep){
 	int endFace = 0;
 	int index = 0;
 	int boundaryBeginIndex = 0;
+	int DOFc;
 	MPI_Request requestSend[MAX_MPI_NEIGHBOURS], requestRecv[MAX_MPI_NEIGHBOURS];
         MPI_Status status[MAX_MPI_NEIGHBOURS];
         int mpiError;
@@ -1189,18 +1190,18 @@ void DG::exchangeBuffer(int rkstep){
 	        boundaryBeginIndex = index;
 	        for(int iface = beginFace; iface < endFace; iface++){
 	                for(int iDOF = 0; iDOF < faces[iface].getNDOF(); iDOF++){
-	                // copy values of the conserved variable vector
+	                        DOFc = faces[iface].getOwnerDOFPoint(iDOF);
+	                        // copy values of the conserved variable vector
 			        for (int nVar=0; nVar<5; nVar++){
 			                if(faces[iface].getOwnerCell() != NULL)
 			                {			                			                
-        	                                sendBuffer[index++] = faces[iface].getOwnerCell()->getVariable(rkstep, nVar, iDOF);
+        	                                sendBuffer[index++] = faces[iface].getOwnerCell()->getVariable(rkstep, nVar, DOFc);
         	                        }
         	                        else
         	                        {
         	                                cout << "Error! faces[iface].getOwnerCell() == NULL for iface = " << iface << " on MPI rank = " << this->getMyRank() << endl;
         	                        }       
 			        }
-			        cout << endl;
 	                }        
 	        }	        
 	        checkMPIErrors(MPI_Isend(sendBuffer+boundaryBeginIndex, (index-boundaryBeginIndex), MPI_DOUBLE, bcondMPI[ibcond].getNeighbProcNo(), rkstep, MPI_COMM_WORLD, &requestSend[ibcond]));
@@ -2612,8 +2613,6 @@ void DG:: calculateCFL(){
 	tempCFL1 = this->charSpeed * this->deltaT / this->charLength; 
 	MPI_Allreduce( &tempCFL1, &tempCFL2, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD );
 	this->CFL  = tempCFL2;
-	
-	cout << "deltaT = " << deltaT  << " CFL = " << CFL << endl;
 };
 
 
@@ -2674,11 +2673,11 @@ void DG:: runApplication(){
 		nowTime += this->deltaT;
 		IterationNumber ++;
 
-		if(myRank==0)
+		/*if(myRank==0)
 		{
 		        string message = "  CFL: " + varToString(this->CFL);
 		        printProgressBar(nowTime / this->endTime * 100.0, message);
-                }
+                }*/
 		// Data writing if condition
 		if(nowTimePrint >= this->printTime){ 
 			// if nowTime is greater than printTime then print data
@@ -2696,10 +2695,12 @@ void DG:: runApplication(){
 	};
 	double tend = omp_get_wtime();
 	double exTime = tend - tstart;
-	cout << "\nTime (RK3) iterations complete. Results written in " << this->path << endl;
-	cout << "exTime: " << exTime << endl;
-	cout << endl;
-
+	if(myRank==0)
+	{
+	        cout << "\nTime (RK3) iterations complete. Results written in " << this->path << endl;
+	        cout << "exTime: " << exTime << endl;
+	        cout << endl;
+        }
 	file.close();
 };
 
