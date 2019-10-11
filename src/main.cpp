@@ -13,7 +13,6 @@ int main(int argc, char *argv[]){
 
 	//runAllTests();
 
-//#if 0	
 	mpiError = MPI_Init(&argc,&argv);
 	
 	if ( mpiError != 0 )
@@ -25,8 +24,7 @@ int main(int argc, char *argv[]){
         }
         mpiError = MPI_Comm_size(MPI_COMM_WORLD, &totalRanks);
         mpiError = MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
-        cout << " My Ranks is " << myRank << endl;
-//#endif	
+        	
 	Test::TestEulerEquations1();
 	//Test::TestScalarTransportSolver();
         

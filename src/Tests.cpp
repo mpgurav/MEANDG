@@ -501,7 +501,11 @@ namespace Test{
 		//double deltaT = 1e-2,startTime=0,endTime=12,printTime=0.2;int integratorType=3;
 		double deltaT = 3e-5,startTime=0.0,endTime=150*deltaT,printTime=10*deltaT;int integratorType=3;
 		application.setTemporalDetails(deltaT,startTime,endTime,printTime,integratorType);
-		application.printTemporalDetails();
+		
+		if(application.getMyRank() == 0)
+                {
+		        application.printTemporalDetails();
+		}        
 
 		// Define and read the variables from 0 folder
 		string VariableName[3] = {"rho", "U", "p"};
@@ -513,6 +517,7 @@ namespace Test{
 		application.readData(startTime); //reference solution is stored same as IC
 		application.writeVariableRefArray(startTime);
 
+#if 0
                 if(application.getMyRank() == 0)
                 {
 		        cout << "\n\nPrinting Boundary conditions\n";
@@ -567,7 +572,8 @@ namespace Test{
 		}
 		//Wait till we print the above information
 		MPI_Barrier(MPI_COMM_WORLD);
-		
+
+#endif 				
 		// Running Simulation
 		application.runApplication();
 

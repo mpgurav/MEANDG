@@ -38,8 +38,6 @@ DG::DG(string path, int order, IntFlag::intflag intType){
 	this->variableFlag = false;
 	this->refVariableFlag = false;
         this->MPIBufferflag = false;
-        
-        cout << "My MPI rank is " << myRank;
 };
 
 // Class destructor 
@@ -242,9 +240,9 @@ void DG::assignRiemannSolver(){
 
 // Total Printer function for all functional details
 void DG::printFunctionalDetails(){
-	cout<<"~~~~~~~~~~~~~~~~~~Functional Details~~~~~~~~~~~~~~~~~~~~~~~~~"<<endl;
-	cout<<"Order of the polynomial: "<<getOrder()<<endl;
-	cout<<"Integration type (exact / inexact): " << this->getQuadratureType() << endl; 
+	//cout<<"~~~~~~~~~~~~~~~~~~Functional Details~~~~~~~~~~~~~~~~~~~~~~~~~"<<endl;
+	//cout<<"Order of the polynomial: "<<getOrder()<<endl;
+	//cout<<"Integration type (exact / inexact): " << this->getQuadratureType() << endl; 
 }
 
 // Setter function for the time step
@@ -395,14 +393,14 @@ void DG::readVariableArray(double Time){
 	time = varToString(Time); //double Time converted into a string. Refer mathAndOtherFunctions.cpp 
 	timePath = path + "/"+time+"/";;
 	
-	cout << "Reading variable array from folder " << timePath << "\n\n" <<  endl;
+	//cout << "Reading variable array from folder " << timePath << "\n\n" <<  endl;
 
 	
 	for (int i=0;i<noOfVariable;i++){
 		int vectorFlag = 0;
 		fileName = timePath + VariableName[i];	// Readin the variable file in timePath folder
 		ifstream file(fileName.c_str());
-		cout << "Reading data from file named: " << fileName << endl;
+		//cout << "Reading data from file named: " << fileName << endl;
 		//Making sure the file exists
 		assert (file.good() && "The above mentioned file (i.e. Input file) not found. Please check again.");
 		string line;
@@ -1146,8 +1144,8 @@ void DG::setMPIBuffers(){
 	for (int ibcond = 0; ibcond < noOfBoundaryConditionsMPI; ibcond++){
 	        beginFace = bcondMPI[ibcond].getStartFace();
 	        endFace = bcondMPI[ibcond].getStartFace() + bcondMPI[ibcond].getNoOfFaces();
-	        cout << "bcondMPI[ibcond].getStartFace() : " << bcondMPI[ibcond].getStartFace() << endl;
-	        cout << "bcondMPI[ibcond].getNoOfFaces()" << bcondMPI[ibcond].getNoOfFaces() << endl;
+	        //cout << "bcondMPI[ibcond].getStartFace() : " << bcondMPI[ibcond].getStartFace() << endl;
+	        //cout << "bcondMPI[ibcond].getNoOfFaces()" << bcondMPI[ibcond].getNoOfFaces() << endl;
 	       buffersize += faces[0].getNDOF() * bcondMPI[ibcond].getNoOfFaces();
 	}
 	assert((solverType == Solver::LLF) && "As of now, MPI implementation only supports LLF solvers.\n");
@@ -1155,8 +1153,8 @@ void DG::setMPIBuffers(){
 	sendBuffer = new double[this->MPIBufferSize];
 	receiveBuffer = new double[this->MPIBufferSize];
 	this->MPIBufferflag = true;
-        cout << "MPIBufferSize : " << this->MPIBufferSize  << endl;
-        cout << "noOfBoundaryConditionsMPI :" << noOfBoundaryConditionsMPI << endl;
+        //cout << "MPIBufferSize : " << this->MPIBufferSize  << endl;
+        //cout << "noOfBoundaryConditionsMPI :" << noOfBoundaryConditionsMPI << endl;
 }
 
 void DG::checkMPIErrors(int mpiError)
@@ -1306,8 +1304,8 @@ void DG::createDomain(){
 // Printing the Domain information
 // Simply calls print function of the Geometry class.
 void DG::printDomain(){
-	cout<<"~~~~~~~~~~~~~~~~~~~Domain Details~~~~~~~~~~~~~~~~~~~~~~~~~~~"<<endl;
-	Domain.print();
+	//cout<<"~~~~~~~~~~~~~~~~~~~Domain Details~~~~~~~~~~~~~~~~~~~~~~~~~~~"<<endl;
+	//Domain.print();
 };
 
 
@@ -1969,7 +1967,7 @@ void DG::calculateInverseJacobian(){
 void DG::computeCellMatrix(){
 	FunctionalSpace F(this->order, this->intType);
 
-	cout <<"Computing cell matrices...\n";
+	//cout <<"Computing cell matrices...\n";
 	for(Index ncell=0; ncell<this->noOfCells; ncell++){
 
 		// printing progress bar. Refer mathAndOtherFunctions.cpp

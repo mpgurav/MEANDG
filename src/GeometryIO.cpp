@@ -116,8 +116,6 @@ int Geometry::setNoOfBoundaryConditions(string& dir){
 	string boundaryFile;
 	boundaryFile = dir + "/boundary";
 	
-	cout << "boundaryFile : " << boundaryFile << endl;
-
 	assert(fileExists(boundaryFile) && "Geometry::setNoOfBoundaryConditions() returns error. Make sure that the file exists.\n");
 	ifstream file(boundaryFile.c_str());
 	string line, tmpWord;
@@ -450,7 +448,6 @@ void Geometry::readBoundaryFile(string& boundaryFile, BoundaryConditions *bcond,
 					stringstream input1(word2);
 					input1>>i;
 					bcondMPI[idMPI].setNoOfFaces(i);
-                                        cout << "bcondMPI[idMPI].setNoOfFaces(i) :" << bcondMPI[idMPI].getNoOfFaces() << endl;
 				}
 				else if(word1=="startFace"){
 					input>>word2;
@@ -463,7 +460,6 @@ void Geometry::readBoundaryFile(string& boundaryFile, BoundaryConditions *bcond,
 					        procBoundariesStartFace[0] = i;
 					}
 					bcondMPI[idMPI].setStartFace(i);
-					cout << "bcondMPI[idMPI].setStartFace(i) :" << bcondMPI[idMPI].getStartFace() << " procBoundariesStartFace = " << procBoundariesStartFace[0] << endl;
 				}
 				else if(word1=="myProcNo"){
 					input>>word2;
@@ -471,7 +467,6 @@ void Geometry::readBoundaryFile(string& boundaryFile, BoundaryConditions *bcond,
 					stringstream input1(word2);
 					input1>>i;
 					bcondMPI[idMPI].setMyProcNo(i);
-					cout << "bcondMPI[idMPI].setMyProcNo(i) :"<< bcondMPI[idMPI].getMyProcNo() << endl;
 				}
 				else if(word1=="neighbProcNo"){
 					input>>word2;
@@ -479,7 +474,6 @@ void Geometry::readBoundaryFile(string& boundaryFile, BoundaryConditions *bcond,
 					stringstream input1(word2);
 					input1>>i;
 					bcondMPI[idMPI].setNeighbProcNo(i);
-					cout << "bcondMPI[idMPI].setNeighbProcNo(i) : "<< bcondMPI[idMPI].getNeighbProcNo() << endl;
 				}
 				else if(word1[0]=='}'){
 					flag=1;
@@ -922,14 +916,14 @@ void Geometry::fillDataArrays(string& dir, Point* points, Face* faces, Cell* cel
 
 
 void Geometry::print(){
-	cout << "The total number of points: " << this->noOfPoints << endl;
-	cout << "The total number of cells: " << this->noOfCells << endl;
-	cout << "The total number of faces: " << this->noOfFaces << endl;
-	cout << "The total number of internal faces: " << this->noOfInternalFaces << endl;
-	cout << "The total number of boundary faces: " << this->noOfBoundaryFaces << endl;
+	//cout << "The total number of points: " << this->noOfPoints << endl;
+	//cout << "The total number of cells: " << this->noOfCells << endl;
+	//cout << "The total number of faces: " << this->noOfFaces << endl;
+	//cout << "The total number of internal faces: " << this->noOfInternalFaces << endl;
+	//cout << "The total number of boundary faces: " << this->noOfBoundaryFaces << endl;
 	
 	// Addition after boundary conditions 
-	cout << "The total number of boundary conditions: " << this->noOfBoundaryConditions << endl;
+	//cout << "The total number of boundary conditions: " << this->noOfBoundaryConditions << endl;
 };
 
 /*******************************************************************************************************/
