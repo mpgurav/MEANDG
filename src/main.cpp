@@ -30,6 +30,7 @@ int main(int argc, char *argv[]){
 	Test::TestEulerEquations1();
 	//Test::TestScalarTransportSolver();
         
+        MPI_Barrier(MPI_COMM_WORLD);
         MPI_Finalize();
 	return 0;
 }

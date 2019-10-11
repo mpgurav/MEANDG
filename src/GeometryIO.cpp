@@ -106,17 +106,8 @@ int Geometry::setNoOfFaces(string& dir){
 	return noOfFaces;
 }
 
-int Geometry::setNoOfGhostFaces(string& dir){
-	//Need not call this function as readBoundaryFile function will set this value
-	return noOfGhostFaces;
-}
-
 int Geometry::getNoOfFaces()const{
 	return this->noOfFaces;
-};
-
-int Geometry::getNoOfGhostFaces()const{
-	return this->noOfGhostFaces;
 };
 
 int Geometry::setNoOfBoundaryConditions(string& dir){
@@ -381,7 +372,6 @@ void Geometry::readBoundaryFile(string& boundaryFile, BoundaryConditions *bcond,
 
 	int count = 0;
 	int countProcBoundaries = 0;
-	int tmpGhostFaces = 0;
 	int procBoundariesFlag = 0;
 	procBoundariesStartFace[0] = 0;
 	if(file.good()){
@@ -460,7 +450,6 @@ void Geometry::readBoundaryFile(string& boundaryFile, BoundaryConditions *bcond,
 					stringstream input1(word2);
 					input1>>i;
 					bcondMPI[idMPI].setNoOfFaces(i);
-                                        tmpGhostFaces += i;
                                         cout << "bcondMPI[idMPI].setNoOfFaces(i) :" << bcondMPI[idMPI].getNoOfFaces() << endl;
 				}
 				else if(word1=="startFace"){
@@ -504,7 +493,6 @@ void Geometry::readBoundaryFile(string& boundaryFile, BoundaryConditions *bcond,
 			
 		}
 	}
-        noOfGhostFaces = tmpGhostFaces;
 	assert((count) == this->getNoOfBoundaryConditions() && "Geometry::readBoundaryFile() returns error. Make sure that the file is read correctly: BoundaryConditions.\n");
 	assert((countProcBoundaries) == this->getNoOfBoundaryConditionsMPI() && "Geometry::readBoundaryFile() returns error. Make sure that the file is read correctly: BoundaryConditionsMPI.\n");
 }

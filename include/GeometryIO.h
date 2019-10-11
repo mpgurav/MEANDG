@@ -25,9 +25,6 @@ class Geometry{
 		/// Get number of faces 
 		int setNoOfFaces(string &dir);
 
-		/// Get number of faces 
-		int setNoOfGhostFaces(string &dir);
-
 		/// Get number of cells
 		int setNoOfCells(string &dir);
 
@@ -49,9 +46,6 @@ class Geometry{
 
 		/// Get number of faces 
 		int getNoOfFaces()const;
-
-		/// Get number of faces 
-		int getNoOfGhostFaces()const;
 
 		/// Get number of cells
 		int getNoOfCells()const;
@@ -133,10 +127,7 @@ class Geometry{
 
 		/// Number of faces in the domain
 		int noOfFaces;
-
-		/// Number of faces in the domain
-		int noOfGhostFaces;
-
+		
 		/// Number of cells in the domain
 		int noOfCells;
 

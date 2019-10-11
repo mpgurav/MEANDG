@@ -26,7 +26,6 @@ public:
 	bool VariableNameFlag;
 	bool pointsFlag;
 	bool facesFlag;
-	bool ghostFacesFlag;
 	bool cellsFlag;
 	bool bcondFlag;
 	bool bcondMPIFlag;
@@ -45,9 +44,7 @@ public:
 	/// Array of points
 	Point* points;	
 	/// Array of faces
-	Face* faces;	
-	/// Array of ghost faces
-	Face* ghostFaces;		
+	Face* faces;		
 	/// Array of cells
 	Cell* cells;	
 	/// Array of boundary conditions
@@ -353,7 +350,6 @@ private:
         int MPIBufferSize;
         double *sendBuffer;
         double *receiveBuffer;
-        int noOfGhostFaces;
         int procBoundariesStartFace;    // Starting face number for the processor boundaries. All the face numbers after this face number will be assumed to be on the processor boundary.
 };
 

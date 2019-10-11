@@ -31,7 +31,6 @@ DG::DG(string path, int order, IntFlag::intflag intType){
 	this->cummulativeVariableSizeFlag = false;
 	this->pointsFlag = false;
 	this->facesFlag = false;
-	this->ghostFacesFlag = false;
 	this->cellsFlag = false;
 	this->bcondFlag = false;
 	this->bcondMPIFlag = false;
@@ -52,9 +51,6 @@ DG::~DG(void){
 	};
 	if (pointsFlag == true){
 		delete[] points;
-	};
-	if (ghostFacesFlag == true){
-		delete[] ghostFaces;
 	};
 	if (facesFlag == true){
 		delete[] faces;
@@ -1226,10 +1222,6 @@ void DG::createDomain(){
 	this->noOfFaces = Domain.getNoOfFaces();
 	faces = new Face[this->noOfFaces];
 	this->facesFlag = true;
-	
-	this->noOfGhostFaces = Domain.getNoOfGhostFaces();
-	ghostFaces = new Face[this->noOfGhostFaces];
-	this->ghostFacesFlag = true;
 
 	this->noOfCells = Domain.getNoOfCells();
 	cells = new Cell[this->noOfCells];
@@ -2686,7 +2678,10 @@ void DG:: runApplication(){
 			this->writeVariableRefArray(nowTime);		
 			this->computeError();
 			nowTimePrint = this->deltaT/2.0;
-
+                        if(myRank==0)
+	                {
+	                        cout << "Writing output for time: " << nowTime << endl;
+                        }
 			double runTime = omp_get_wtime() - tstart;
 			file << nowTime << " " << this->error[0] << " " << this->error[1] << " " << this->error[2] << " " << runTime << endl;
 		}
